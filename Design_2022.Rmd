@@ -1,0 +1,264 @@
+---
+title: |
+    | STAT 441/541: Final Exam
+    | Name:
+output: pdf_document 
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+options(mc.cores = parallel::detectCores())
+```
+
+Please turn the exam in on D2L and include the R Markdown code _and_ a PDF or Word file with output. Verify that all of the code has compiled. While the exam is open book and you can use any resources from class or freely available on the internet, this is strictly an individual endeavor and **you should not discuss the problems with anyone outside the course instructor including class members.** All resources, including websites, should be acknowledged.
+
+## Part A. Experimental Design Plan (24 points)
+
+Suppose that you utilize your experimental design skills and start a business growing and selling sunflowers. Given that you live in Bozeman, you have limited space for a garden, but you do have a small area beside your house to construct a raised bed garden. Your goal is to select the combination of sunflower `species` ([evening sun](https://www.seedsavers.org/evening-sun-organic-sunflower), [ring of fire](https://www.seedsavers.org/ring-of-fire-sunflower), [velvet queen](https://www.seedsavers.org/velvet-queen-sunflower)) and `watering_regime` (daily with watering bucket or every-other day with a hose) that optimizes the number of sunflowers you can sell. When building a raised garden bed, you realized that roughly 1/3 of your garden will be shaded by your neighbor's Sprinter Van.  
+
+Use this information to construct an experimental design plan. You only need to complete components that have points associated with them, but you'll need to use information provided for the other questions.
+
+#### 1. Define the objective of your study (2 point)
+
+#### 2. Define meaningful and measurable response (2 point)
+
+#### 3. Diagram treatment application process for a single run (2 points)
+
+#### 4. Identify experimental units (and if appropriate observational units) (2 points)
+
+#### 5. List sources of variation (2 points)
+
+#### 6. Perform pilot runs
+_Given how long it takes for sunflowers to bloom (around 75 days), you won't have time to perform a pilot study before planting your summer crop. However, assume that your research has suggested that a single seed can have about fifteen flowers on average and that a standard deviation for the number of flowers is around 7._
+
+
+#### 7. Choose experimental design (i.e. randomization) (4 points)
+_Describe the randomization procedure and also include code that assigns treatments to your EUs_
+
+
+#### 8. Determine number of replicates required (4 points)
+_Regardless of your randomization approach, you can assume a completely randomized design with equal numbers of replicates for each treatment combination when determining the number of replicates you will need._
+
+#### 9. Describe method(s) for data analysis (4 points)
+_Write out the statistical model and specify the R code that could analyze the data. (You won't able to run the code, but include it in an R chunk with {r, eval = F} in the header for the chunk.)_
+
+
+#### 10. Timetable and budget for resources to complete experiment (2 points)
+_You can assume a pack of sunflower seeds cost \$4 and has 100 seeds. Watering your garden costs \$1 per week for either the watering bucket or hose approach._
+
+
+## Part B. Sample Size considerations (10 points)
+
+##### 1. (4 points) 
+_Compare and contrast using power versus a desired precision for the standard error as tools to inform sample size consideration._
+
+##### 2. (6 points) 
+
+_Consider a model with one treatment (two levels). Suppose that without blocking $\sigma_{CRD}$ is 10, but blocking controls the variability such that $\sigma_{RCBD}$ is 5. For both scenarios, compute the total number of samples required such that the expected standard error of the contrast between the two groups is less than 1. (Hint: if $x \sim N(\mu_x, \sigma^2_x)$ and $y \sim N(\mu_y, \sigma^2_y)$, then $x - y \sim N(\mu_x - \mu_y, \sigma^2_x + \sigma^2_y)$)_
+
+## Part C. Randomization (6 points)
+
+```{r, echo = F}
+
+return_contrast_CRD <- function(trt_vec){
+  # this function returns the contrast between LaCroix and tap water
+  # trt_vec: is a vector of length 24 that specifies whether each
+  #          EU is given "LaCroix" or "Tap"
+  if (length(trt_vec) != 24) {
+    stop("you broke the function, trt_vec needs to be length 24")
+  } else if (sum(trt_vec == "LaCroix") != 12){
+    stop("you broke the function, there need to be 12 EUs for 'LaCroix'")
+  } else if (sum(trt_vec == "Tap") != 12){
+    stop("you broke the function, there need to be 12 EUs for 'Tap'")
+  }
+    
+  y_tap <- counterfactuals[(1:24)[trt_vec == 'Tap'], 'tap_flowers'] %>% pull()
+  y_lc <- counterfactuals[(1:24)[trt_vec == 'LaCroix'], 'LaCroix_flowers'] %>% pull()
+  
+  dat <- tibble(y = c(y_lc, y_tap), x = rep(c('LaCroix','Tap'), each = 12))
+  return(-lm(y ~ x, data = dat)[[1]][[2]])
+} 
+
+return_contrast_GRCBD <- function(trt_vec){
+  # this function returns the contrast between LaCroix and tap water
+  #      for a GRCBD
+  # trt_vec: is a vector of length 24 that specifies whether each
+  #          EU is given "LaCroix" or "Tap"
+  if (length(trt_vec) != 24) {
+    stop("you broke the function, trt_vec needs to be length 24")
+  } else if (sum(trt_vec == "LaCroix") != 12){
+    stop("you broke the function, there need to be 12 EUs for 'LaCroix'")
+  } else if (sum(trt_vec == "Tap") != 12){
+    stop("you broke the function, there need to be 12 EUs for 'Tap'")
+  } else if (sum(trt_vec[1:12] == "Tap") != 6){
+    stop("you broke the function, there need to be 6 old EUs for 'Tap'")
+  } else if (sum(trt_vec[1:12] == "LaCroix") != 6){
+    stop("you broke the function, there need to be 6 old EUs for 'LaCroix'")
+  } else if (sum(trt_vec[13:24] == "Tap") != 6){
+    stop("you broke the function, there need to be 6 new EUs for 'Tap'")
+  } else if (sum(trt_vec[13:24] == "LaCroix") != 6){
+    stop("you broke the function, there need to be 6 new EUs for 'LaCroix'")
+  }
+  y_tap <- counterfactuals[(1:24)[trt_vec == 'Tap'], 'tap_flowers'] %>% pull()
+  y_lc <- counterfactuals[(1:24)[trt_vec == 'LaCroix'], 'LaCroix_flowers'] %>% pull()
+  block_tap <- counterfactuals[(1:24)[trt_vec == 'Tap'], 'seed_type'] %>% pull()
+  block_lc <- counterfactuals[(1:24)[trt_vec == 'LaCroix'], 'seed_type'] %>% pull()
+  
+  dat <- tibble(y = c(y_lc, y_tap), x = rep(c('LaCroix', 'Tap'), each = 12),
+                block = c(block_lc, block_tap))
+  return(-lm(y ~ x + block, data = dat)[[1]][[2]])
+} 
+```
+
+While looking for your gardening gloves you find an old packet with 12 sunflower seeds. You also have 12 seeds left over from your experiment in part A. Using a 24 slot starter you plan to explore whether giving seeds La Croix vs tap water has any difference in the total number of flowers the plants produce. This question will explore the difference between a CRD and blocking (on old seeds vs. new seeds) with a GRCBD. 
+
+```{r, echo = F}
+set.seed(04242022)
+counterfactuals <- tibble(EUs = 1:24, 
+     seed_type = rep(c('old','new'), each = 12),
+     tap_flowers = rpois(24, rep(c(5, 15), each = 12))) %>%
+  mutate(LaCroix_flowers = tap_flowers + rpois(24, 3))
+counterfactuals %>% select(EUs, seed_type) %>% kable()
+```
+
+I have written two functions `return_contrast_CRD()` and `return_contrast_GRCBD()` that will return the contrast between the La Croix and tap water. The functions require a vector of length two where each element is either `LaCroix` or `Tap` corresponding to that EU. 
+
+##### 1. (6 points) 
+
+For each approach (`CRD` and `GRCBD`) generate 1000 realizations and use a histogram to plot the distribution for the contrast from each scenario. Comment on the differences in the figures and the implications for the two sample regimes.
+
+```{r}
+# Enter a vector of length 24 that includes a treatment for each
+# each EU. The first entry will be for EU 1, and so on.
+# I have set up the first CRD design for you. 
+# You'll need to do this 1000 times.
+return_contrast_CRD(sample(rep(c('LaCroix', 'Tap'), each =12)))
+
+
+# You'll also need to do 1000 replicates for the GRCBD.
+# I've done one for you.
+# If you don't have a balanced design with 6 of each treatment
+# in each block, the function will return an error.
+
+return_contrast_GRCBD(c(sample(rep(c('LaCroix', 'Tap'), each =6)),
+                        sample(rep(c('LaCroix', 'Tap'), each =6))))
+```
+
+## Part D. Analysis 1 (6 points)
+
+```{r, echo = F}
+beta0 <- 10
+beta1 <- 3
+beta2 <- -2
+
+
+D1 <- tibble(treat1 = rep(c('A','B'), each = 10),
+             treat2 = rep(c('A','B'), 10),
+             y = rnorm(20, mean = rep(beta0, 20) + 
+                         rep(c(0, beta1), each = 10) +
+                         rep(c(0, beta2),10),
+                       sd = 2))
+
+D1 %>% kable()
+```
+
+
+```{r}
+lm(y ~ treat1 + treat2, data = D1) %>% summary()
+```
+
+
+##### 1. (2 points)
+Interpret the output above using p-values and associated statistical significance language.
+
+
+
+##### 2. (2 points)
+Interpret the output above without using p-values and associated statistical significance language.
+
+
+##### 3. (2 points)
+
+Reflecting on the previous two questions, which approach do you envision yourself taking in the future. Why? _(Note: All thoughtful answers for this question will receive full credit)_
+
+
+
+## Part E. Analysis 2 (10 points)
+For this question, we use a portion of a dataset from an article titled "Unified Meta-analysis: Using a Single Model to Estimate Treatment Effects of Multiple Interventions" In case you question the relevance of experimental design for modern statistics or data science, consider the following statement from the article
+
+>>The eminent computer scientist, Professor Michael Jordan
+at Berkeley, had this to say about what big data is: “...You
+might be excused of thinking [big data is] just a problem of
+building bigger computer systems and faster systems of
+treating data ... it’s a database problem. ... That is not my
+perspective. ... I think it’s an integrated inference and
+computer science problem and in fact it’s a deeper
+integration than anything we've seen before. It's the first
+time the fields are really being forced together at their
+foundations”. Jordan goes on to argue that the “problem
+of our age” is to learn how to use these large data sets to
+infer causality. It’s very easy to find spurious correlations
+in huge data sets (like EdX data sets). So how do we find
+authentic causality? The best way to do that is to run
+controlled experiments.
+We argue that what is important about big data is the ability
+to run big experiments. Randomized controlled
+experiments are the best way we have to determine if an
+independent variable has a causal relationship with a
+dependent variable. That is why all the big web-facing
+companies (Amazon, Bing, Google, Facebook, etc.) use
+online web-based experiments to guide product
+development. 
+
+The article presents a dataset containing an experiment performed in the mathematics software ASSISTments. This particular experiment focuses on exercises to find the expected value. The treatment was a "Skill Builders assignment" designed to teach important concepts related to the task. The dataset contains four columns:
+
+- Treatment: E for Experiment and C for Control
+- PriorPercentCorrect: the percent of problems the student has previously completed correctly
+- ProblemCount: Number of problems the student correctly answers
+- complete: binary variable for whether the student sucessfully completed the assessment
+
+```{r, echo = F, message = F}
+assist <- read_csv('https://raw.githubusercontent.com/stat441/finalexam/main/assist_experiment.csv')
+```
+
+##### 1. (4 points)
+
+Create a figure to display how `ProblemCount` differs across the treatment and control groups. Make sure the figure has complete labels, titles and an informative caption.
+
+##### 2. (4 points)
+
+Analyze how `ProblemCount` is impacted by the treatment. Make sure to explore whether `PriorPercentCorrect` can explain additional variability in the response. Write a few paragraphs to summarize your results.
+
+(_Note: the researchers are more interested in the complete variable, but this analysis would require knowledge about GLMs and logistic regression. In fact, you may notice that `ProblemCount` is an integer and a count-regression model such as Poisson regression might be more appropriate; however, just use a linear model framework for this question._ )
+
+
+##### 4. (2 points)
+Throughout class, we have talked about a scientifically meaningful difference. Is this idea captured in typical Null Hypothesis Significance Testing and p-values? Why or why not?
+
+
+## Part F. Experimental Design Plan, Part 2 __for 541 only__ (10 points)
+
+After telling your neighbor about your business plan for sunflowers, they offer to hire you to help with their tomatoes. It turns out that they have collected some data over the last few years. Their goal is to determine which tomato plants give the biggest tomatoes. They have four large planters two of which have been planted with [Cherokee Purple](https://www.seedsavers.org/cherokee-purple-organic-tomato) and two which have been planted with [Rosso Sicilian](https://www.seedsavers.org/rosso-sicilian-organic-tomato). 
+
+You asked about EUs and OUs and they gave you a puzzled look at then said, "I don't know what that means, but I have a dataset you can analyze." Below you can see a snapshot of the first 10 rows of the dataset.
+
+```{r, echo = F}
+tomatoes <- tibble(year = rep(2020, 10), planter = rep(1, 10), 
+                   plant_number = c(rep(1, 5), rep(2, 3), rep(3,2)), 
+                   tomato_number = c(1:5,1:3, 1:2), 
+                   tomato_weight = rlnorm(10,log(4.1),.25),
+                   species = rep("Cherokee Purple", 10))
+tomatoes
+```
+
+##### 1. (4 points)
+Based on what you can decipher from the dataset, what are the EUs in this study?
+
+##### 2. (2 points)
+Are there any OUs in the experiment? If so, what are they?
+
+##### 3. (4 points)
+In a couple of paragraphs, write a few recommendations for an improved experimental design.
+
